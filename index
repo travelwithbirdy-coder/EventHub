@@ -1,0 +1,1131 @@
+import React, { useState, useMemo } from "react";
+
+/* ---------- Design tokens ----------
+   Palette: parchment bg, deep pine header, amber accent (ticket-stub theme)
+   Type: Fraunces (display), Inter (body/UI), IBM Plex Mono (dates/data)
+------------------------------------- */
+
+const FONT_LINK_ID = "eventhub-fonts";
+function ensureFonts() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(FONT_LINK_ID)) return;
+  const link = document.createElement("link");
+  link.id = FONT_LINK_ID;
+  link.rel = "stylesheet";
+  link.href =
+    "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap";
+  document.head.appendChild(link);
+}
+
+const C = {
+  bg: "#F5F0E3",
+  surface: "#FFFFFF",
+  ink: "#221F19",
+  inkSoft: "#645D4D",
+  pine: "#1E3B2E",
+  pineLight: "#2E5443",
+  pineDeep: "#12261D",
+  amber: "#D98A3D",
+  amberDeep: "#9C5F22",
+  amberSoft: "#F5DDBB",
+  sage: "#9CB09B",
+  sageSoft: "#E4EBDE",
+  coral: "#B84D3E",
+  coralSoft: "#F3DCD6",
+  line: "#E3D8BE",
+};
+
+const seedCategories = ["Workshop", "Cultural", "Sports", "Tech", "Career", "Social"];
+
+const seedEvents = [
+  {
+    id: "ev-1",
+    title: "Freshers' Welcome Night",
+    category: "Social",
+    date: "2026-09-04",
+    time: "18:00",
+    venue: "Auditorium A",
+    capacity: 300,
+    description:
+      "Kick off the semester with games, food stalls, and performances from every club on campus.",
+    club: "Student Council",
+  },
+  {
+    id: "ev-2",
+    title: "Hackathon: Build for Good",
+    category: "Tech",
+    date: "2026-09-20",
+    time: "09:00",
+    venue: "Innovation Lab",
+    capacity: 80,
+    description: "24-hour build sprint for teams tackling a real campus problem. Prizes for top three teams.",
+    club: "Computing Society",
+  },
+  {
+    id: "ev-3",
+    title: "Inter-Faculty Futsal Cup",
+    category: "Sports",
+    date: "2026-09-27",
+    time: "15:30",
+    venue: "Sports Complex",
+    capacity: 150,
+    description: "Faculties face off in a knockout futsal tournament. Come cheer your team on.",
+    club: "Sports Union",
+  },
+  {
+    id: "ev-4",
+    title: "Resume & LinkedIn Clinic",
+    category: "Career",
+    date: "2026-10-02",
+    time: "13:00",
+    venue: "Seminar Room 4",
+    capacity: 40,
+    description: "Drop-in clinic with the careers team — bring a laptop and leave with a sharper profile.",
+    club: "Careers Office",
+  },
+  {
+    id: "ev-5",
+    title: "Cultural Night: Colours of Asia",
+    category: "Cultural",
+    date: "2026-10-11",
+    time: "17:30",
+    venue: "Open Grounds",
+    capacity: 250,
+    description: "An evening of dance, music, and food representing the diversity of our student body.",
+    club: "Cultural Society",
+  },
+];
+
+function uid(prefix) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function formatDate(d) {
+  const dt = new Date(`${d}T00:00:00`);
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function monthAbbr(d) {
+  const dt = new Date(`${d}T00:00:00`);
+  return dt.toLocaleDateString("en-GB", { month: "short" }).toUpperCase();
+}
+function dayNum(d) {
+  const dt = new Date(`${d}T00:00:00`);
+  return dt.getDate();
+}
+
+/* ---------- Small UI atoms ---------- */
+
+function Badge({ children, tone = "pine" }) {
+  const tones = {
+    pine: { bg: C.sageSoft, fg: C.pineDeep },
+    amber: { bg: C.amberSoft, fg: C.amberDeep },
+    coral: { bg: C.coralSoft, fg: C.coral },
+  };
+  const t = tones[tone] || tones.pine;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: 11,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        padding: "3px 9px",
+        borderRadius: 999,
+        background: t.bg,
+        color: t.fg,
+        fontWeight: 500,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Button({ children, onClick, variant = "primary", type = "button", small, style }) {
+  const base = {
+    fontFamily: "'Inter', sans-serif",
+    fontWeight: 600,
+    fontSize: small ? 13 : 14,
+    padding: small ? "7px 14px" : "10px 20px",
+    borderRadius: 8,
+    cursor: "pointer",
+    border: "1.5px solid transparent",
+    transition: "transform 0.08s ease, opacity 0.15s ease",
+    letterSpacing: "0.01em",
+  };
+  const variants = {
+    primary: { background: C.amber, color: "#2B1B08", borderColor: C.amber },
+    dark: { background: C.pine, color: "#F5F0E3", borderColor: C.pine },
+    ghost: { background: "transparent", color: C.pine, borderColor: C.line },
+    danger: { background: "transparent", color: C.coral, borderColor: C.coralSoft },
+  };
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      style={{ ...base, ...variants[variant], ...style }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
+      onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label style={{ display: "block", marginBottom: 14 }}>
+      <span
+        style={{
+          display: "block",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: C.inkSoft,
+          marginBottom: 5,
+        }}
+      >
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "'Inter', sans-serif",
+  fontSize: 14,
+  padding: "9px 11px",
+  borderRadius: 7,
+  border: `1.5px solid ${C.line}`,
+  background: "#FFFEFA",
+  color: C.ink,
+  outline: "none",
+};
+
+/* ---------- Ticket-stub event card (signature element) ---------- */
+
+function TicketCard({ ev, categoryColor, children, footer }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        background: C.surface,
+        borderRadius: 14,
+        border: `1.5px solid ${C.line}`,
+        overflow: "visible",
+        position: "relative",
+        boxShadow: "0 1px 0 rgba(34,31,25,0.03)",
+      }}
+    >
+      <div
+        style={{
+          width: 84,
+          flexShrink: 0,
+          background: C.pine,
+          color: "#F5F0E3",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "14px 0 0 14px",
+          position: "relative",
+        }}
+      >
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: "0.08em", opacity: 0.75 }}>
+          {monthAbbr(ev.date)}
+        </div>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 30, fontWeight: 600, lineHeight: 1 }}>
+          {dayNum(ev.date)}
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, opacity: 0.75, marginTop: 4 }}>
+          {ev.time}
+        </div>
+        {/* perforation notches */}
+        <div
+          style={{
+            position: "absolute",
+            top: -7,
+            right: -7,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: C.bg,
+            border: `1.5px solid ${C.line}`,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: -7,
+            right: -7,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: C.bg,
+            border: `1.5px solid ${C.line}`,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 8,
+            bottom: 8,
+            borderRight: `1.5px dashed rgba(245,240,227,0.35)`,
+          }}
+        />
+      </div>
+      <div style={{ flex: 1, padding: "14px 18px", minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, margin: "0 0 4px", color: C.ink }}>
+              {ev.title}
+            </h3>
+            <div style={{ fontSize: 13, color: C.inkSoft, display: "flex", flexWrap: "wrap", gap: "4px 10px" }}>
+              <span>{ev.venue}</span>
+              <span>&middot;</span>
+              <span>{ev.club}</span>
+            </div>
+          </div>
+          <Badge tone={categoryColor}>{ev.category}</Badge>
+        </div>
+        {ev.description && (
+          <p style={{ fontSize: 13.5, color: C.inkSoft, margin: "10px 0 0", lineHeight: 1.55 }}>{ev.description}</p>
+        )}
+        {children}
+        {footer && <div style={{ marginTop: 12 }}>{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+function catTone(category, categories) {
+  const idx = categories.indexOf(category);
+  return idx % 2 === 0 ? "pine" : "amber";
+}
+
+/* ---------- App ---------- */
+
+export default function EventHub() {
+  ensureFonts();
+
+  const [session, setSession] = useState(null); // { role, name, email }
+  const [events, setEvents] = useState(seedEvents);
+  const [categories, setCategories] = useState(seedCategories);
+  const [announcements, setAnnouncements] = useState([
+    { id: uid("an"), title: "Registrations open for Hackathon", body: "Team sign-ups close 18 Sept. Max 4 members per team.", date: "2026-08-20" },
+    { id: uid("an"), title: "Venue change: Cultural Night", body: "Moved to the Open Grounds due to expected turnout.", date: "2026-08-18" },
+  ]);
+  const [registrations, setRegistrations] = useState([]); // { id, eventId, studentName, studentEmail }
+
+  const [adminTab, setAdminTab] = useState("events");
+  const [studentTab, setStudentTab] = useState("browse");
+
+  if (!session) return <LoginScreen onLogin={setSession} />;
+
+  return (
+    <div
+      style={{
+        fontFamily: "'Inter', sans-serif",
+        background: C.bg,
+        minHeight: "100%",
+        color: C.ink,
+      }}
+    >
+      <TopBar session={session} onLogout={() => setSession(null)} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 60px", display: "flex", gap: 26 }}>
+        <SideNav
+          role={session.role}
+          active={session.role === "admin" ? adminTab : studentTab}
+          onSelect={session.role === "admin" ? setAdminTab : setStudentTab}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {session.role === "admin" ? (
+            <AdminPanel
+              tab={adminTab}
+              events={events}
+              setEvents={setEvents}
+              categories={categories}
+              setCategories={setCategories}
+              announcements={announcements}
+              setAnnouncements={setAnnouncements}
+              registrations={registrations}
+            />
+          ) : (
+            <StudentPanel
+              tab={studentTab}
+              session={session}
+              events={events}
+              categories={categories}
+              announcements={announcements}
+              registrations={registrations}
+              setRegistrations={setRegistrations}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Login ---------- */
+
+function LoginScreen({ onLogin }) {
+  const [role, setRole] = useState("student");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+
+  function submit(e) {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      setError("Enter your name and email to continue.");
+      return;
+    }
+    onLogin({ role, name: name.trim(), email: email.trim() });
+  }
+
+  return (
+    <div
+      style={{
+        fontFamily: "'Inter', sans-serif",
+        minHeight: "100%",
+        background: C.pine,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div style={{ display: "flex", width: "100%", maxWidth: 780, background: C.bg, borderRadius: 18, overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
+        <div
+          style={{
+            flex: "0 0 45%",
+            background: `linear-gradient(160deg, ${C.pineDeep}, ${C.pineLight})`,
+            color: "#F5F0E3",
+            padding: "38px 32px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: "0.1em", opacity: 0.75, marginBottom: 10 }}>
+              NSBM UNIVERSITY
+            </div>
+            <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 34, fontWeight: 600, lineHeight: 1.12, margin: 0 }}>
+              EventHub
+            </h1>
+            <p style={{ fontSize: 14, opacity: 0.85, marginTop: 14, lineHeight: 1.6 }}>
+              Plan, publish, and register for every club event on campus — all in one place.
+            </p>
+          </div>
+          <div style={{ borderTop: "1px solid rgba(245,240,227,0.2)", paddingTop: 16, fontSize: 12.5, opacity: 0.7, fontStyle: "italic", fontFamily: "'Fraunces', serif" }}>
+            Every ticket tells you where to be next.
+          </div>
+        </div>
+        <form onSubmit={submit} style={{ flex: 1, padding: "38px 32px" }}>
+          <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600, margin: "0 0 18px" }}>Sign in</h2>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            {["student", "admin"].map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRole(r)}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 8,
+                  border: `1.5px solid ${role === r ? C.pine : C.line}`,
+                  background: role === r ? C.pine : "transparent",
+                  color: role === r ? "#F5F0E3" : C.inkSoft,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  textTransform: "capitalize",
+                  cursor: "pointer",
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          <Field label={role === "admin" ? "Admin name" : "Full name"}>
+            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Nadeesha Perera" />
+          </Field>
+          <Field label="Email">
+            <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@nsbm.ac.lk" />
+          </Field>
+
+          {error && <p style={{ color: C.coral, fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
+
+          <Button type="submit" variant="dark" style={{ width: "100%", marginTop: 6 }}>
+            {role === "admin" ? "Enter admin dashboard" : "Continue to EventHub"}
+          </Button>
+          <p style={{ fontSize: 12, color: C.inkSoft, marginTop: 14, lineHeight: 1.5 }}>
+            Prototype login — any name and email will do.
+          </p>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Top bar & side nav ---------- */
+
+function TopBar({ session, onLogout }) {
+  return (
+    <div style={{ background: C.pine, color: "#F5F0E3" }}>
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: "0 auto",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600 }}>EventHub</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, opacity: 0.65, letterSpacing: "0.05em" }}>
+            NSBM UNIVERSITY
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{session.name}</div>
+            <div style={{ fontSize: 11.5, opacity: 0.7, textTransform: "capitalize" }}>{session.role}</div>
+          </div>
+          <button
+            onClick={onLogout}
+            style={{
+              background: "transparent",
+              border: "1.5px solid rgba(245,240,227,0.35)",
+              color: "#F5F0E3",
+              borderRadius: 7,
+              padding: "7px 13px",
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ADMIN_TABS = [
+  { key: "events", label: "Events" },
+  { key: "categories", label: "Categories" },
+  { key: "registrations", label: "Registrations" },
+  { key: "announcements", label: "Announcements" },
+  { key: "participants", label: "Participant lists" },
+];
+const STUDENT_TABS = [
+  { key: "browse", label: "Browse events" },
+  { key: "schedule", label: "My schedule" },
+  { key: "announcements", label: "Announcements" },
+];
+
+function SideNav({ role, active, onSelect }) {
+  const tabs = role === "admin" ? ADMIN_TABS : STUDENT_TABS;
+  return (
+    <div style={{ width: 190, flexShrink: 0 }}>
+      <div
+        style={{
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 11,
+          letterSpacing: "0.08em",
+          color: C.inkSoft,
+          textTransform: "uppercase",
+          marginBottom: 10,
+        }}
+      >
+        {role === "admin" ? "Admin" : "Student"}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {tabs.map((t) => {
+          const isActive = active === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => onSelect(t.key)}
+              style={{
+                textAlign: "left",
+                padding: "9px 12px",
+                borderRadius: 8,
+                border: "none",
+                background: isActive ? C.surface : "transparent",
+                color: isActive ? C.pine : C.inkSoft,
+                fontWeight: isActive ? 600 : 500,
+                fontSize: 13.5,
+                cursor: "pointer",
+                borderLeft: isActive ? `3px solid ${C.amber}` : "3px solid transparent",
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({ eyebrow, title, action }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
+      <div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: "0.08em", color: C.amberDeep, textTransform: "uppercase", marginBottom: 4 }}>
+          {eyebrow}
+        </div>
+        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 24, fontWeight: 600, margin: 0 }}>{title}</h2>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+/* ---------- Admin: Events ---------- */
+
+function emptyEventForm(categories) {
+  return {
+    title: "",
+    category: categories[0] || "",
+    date: "",
+    time: "",
+    venue: "",
+    capacity: 50,
+    description: "",
+    club: "",
+  };
+}
+
+function AdminPanel({ tab, events, setEvents, categories, setCategories, announcements, setAnnouncements, registrations }) {
+  if (tab === "events") return <AdminEvents events={events} setEvents={setEvents} categories={categories} registrations={registrations} />;
+  if (tab === "categories") return <AdminCategories categories={categories} setCategories={setCategories} events={events} />;
+  if (tab === "registrations") return <AdminRegistrations events={events} registrations={registrations} />;
+  if (tab === "announcements") return <AdminAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} />;
+  if (tab === "participants") return <AdminParticipants events={events} registrations={registrations} />;
+  return null;
+}
+
+function AdminEvents({ events, setEvents, categories, registrations }) {
+  const [editing, setEditing] = useState(null); // event object or "new" or null
+  const [form, setForm] = useState(emptyEventForm(categories));
+  const [error, setError] = useState("");
+
+  function startNew() {
+    setForm(emptyEventForm(categories));
+    setEditing("new");
+    setError("");
+  }
+  function startEdit(ev) {
+    setForm({ ...ev });
+    setEditing(ev.id);
+    setError("");
+  }
+  function remove(id) {
+    setEvents(events.filter((e) => e.id !== id));
+  }
+  function save() {
+    if (!form.title.trim() || !form.date || !form.time || !form.venue.trim()) {
+      setError("Title, date, time, and venue are required.");
+      return;
+    }
+    if (editing === "new") {
+      setEvents([{ ...form, id: uid("ev"), capacity: Number(form.capacity) || 0 }, ...events]);
+    } else {
+      setEvents(events.map((e) => (e.id === editing ? { ...form, id: editing, capacity: Number(form.capacity) || 0 } : e)));
+    }
+    setEditing(null);
+  }
+
+  const regCount = (evId) => registrations.filter((r) => r.eventId === evId).length;
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Manage"
+        title="Events"
+        action={<Button onClick={startNew}>+ New event</Button>}
+      />
+
+      {editing && (
+        <EventForm
+          form={form}
+          setForm={setForm}
+          categories={categories}
+          error={error}
+          onCancel={() => setEditing(null)}
+          onSave={save}
+          isNew={editing === "new"}
+        />
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: editing ? 22 : 0 }}>
+        {events.length === 0 && <EmptyState text="No events yet. Create your first event to get started." />}
+        {events.map((ev) => (
+          <TicketCard key={ev.id} ev={ev} categoryColor={catTone(ev.category, categories)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12.5, color: C.inkSoft, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {regCount(ev.id)} / {ev.capacity} registered
+              </span>
+              <div style={{ flex: 1 }} />
+              <Button small variant="ghost" onClick={() => startEdit(ev)}>Edit</Button>
+              <Button small variant="danger" onClick={() => remove(ev.id)}>Delete</Button>
+            </div>
+          </TicketCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EventForm({ form, setForm, categories, error, onCancel, onSave, isNew }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  return (
+    <div style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 14, padding: 20, marginBottom: 4 }}>
+      <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, margin: "0 0 14px" }}>
+        {isNew ? "New event" : "Edit event"}
+      </h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <Field label="Title">
+          <input style={inputStyle} value={form.title} onChange={set("title")} placeholder="Freshers' Welcome Night" />
+        </Field>
+        <Field label="Organising club">
+          <input style={inputStyle} value={form.club} onChange={set("club")} placeholder="Student Council" />
+        </Field>
+        <Field label="Category">
+          <select style={inputStyle} value={form.category} onChange={set("category")}>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Capacity">
+          <input type="number" min="1" style={inputStyle} value={form.capacity} onChange={set("capacity")} />
+        </Field>
+        <Field label="Date">
+          <input type="date" style={inputStyle} value={form.date} onChange={set("date")} />
+        </Field>
+        <Field label="Time">
+          <input type="time" style={inputStyle} value={form.time} onChange={set("time")} />
+        </Field>
+        <Field label="Venue">
+          <input style={inputStyle} value={form.venue} onChange={set("venue")} placeholder="Auditorium A" />
+        </Field>
+      </div>
+      <Field label="Description">
+        <textarea
+          style={{ ...inputStyle, minHeight: 70, resize: "vertical", fontFamily: "'Inter', sans-serif" }}
+          value={form.description}
+          onChange={set("description")}
+          placeholder="What should students expect?"
+        />
+      </Field>
+      {error && <p style={{ color: C.coral, fontSize: 13, margin: "0 0 10px" }}>{error}</p>}
+      <div style={{ display: "flex", gap: 10 }}>
+        <Button onClick={onSave}>{isNew ? "Create event" : "Save changes"}</Button>
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ text }) {
+  return (
+    <div
+      style={{
+        border: `1.5px dashed ${C.line}`,
+        borderRadius: 12,
+        padding: "30px 20px",
+        textAlign: "center",
+        color: C.inkSoft,
+        fontSize: 14,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+/* ---------- Admin: Categories ---------- */
+
+function AdminCategories({ categories, setCategories, events }) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+
+  function add() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Enter a category name.");
+      return;
+    }
+    if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setError("That category already exists.");
+      return;
+    }
+    setCategories([...categories, trimmed]);
+    setName("");
+    setError("");
+  }
+  function remove(cat) {
+    setCategories(categories.filter((c) => c !== cat));
+  }
+  const countFor = (cat) => events.filter((e) => e.category === cat).length;
+
+  return (
+    <div>
+      <SectionHeader eyebrow="Manage" title="Event categories" />
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, maxWidth: 420 }}>
+        <input
+          style={inputStyle}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Wellness"
+          onKeyDown={(e) => e.key === "Enter" && add()}
+        />
+        <Button onClick={add} small>Add</Button>
+      </div>
+      {error && <p style={{ color: C.coral, fontSize: 13, marginTop: -12, marginBottom: 16 }}>{error}</p>}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {categories.map((cat) => (
+          <div
+            key={cat}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: C.surface,
+              border: `1.5px solid ${C.line}`,
+              borderRadius: 10,
+              padding: "11px 16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{cat}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: C.inkSoft }}>
+                {countFor(cat)} event{countFor(cat) === 1 ? "" : "s"}
+              </span>
+            </div>
+            <Button small variant="danger" onClick={() => remove(cat)}>Remove</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Admin: Registrations ---------- */
+
+function AdminRegistrations({ events, registrations }) {
+  const [filter, setFilter] = useState("all");
+  const filtered = filter === "all" ? registrations : registrations.filter((r) => r.eventId === filter);
+  const eventById = (id) => events.find((e) => e.id === id);
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Overview"
+        title="Event registrations"
+        action={
+          <select style={{ ...inputStyle, width: 220 }} value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">All events</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>{e.title}</option>
+            ))}
+          </select>
+        }
+      />
+      {filtered.length === 0 ? (
+        <EmptyState text="No registrations match this view yet." />
+      ) : (
+        <div style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+            <thead>
+              <tr style={{ background: C.sageSoft, textAlign: "left" }}>
+                <Th>Student</Th>
+                <Th>Email</Th>
+                <Th>Event</Th>
+                <Th>Date</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => {
+                const ev = eventById(r.eventId);
+                return (
+                  <tr key={r.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                    <Td>{r.studentName}</Td>
+                    <Td>{r.studentEmail}</Td>
+                    <Td>{ev ? ev.title : "—"}</Td>
+                    <Td>{ev ? formatDate(ev.date) : "—"}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+function Th({ children }) {
+  return <th style={{ padding: "10px 16px", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: "0.05em", textTransform: "uppercase", color: C.pineDeep }}>{children}</th>;
+}
+function Td({ children }) {
+  return <td style={{ padding: "10px 16px" }}>{children}</td>;
+}
+
+/* ---------- Admin: Announcements ---------- */
+
+function AdminAnnouncements({ announcements, setAnnouncements }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState("");
+
+  function post() {
+    if (!title.trim() || !body.trim()) {
+      setError("Add a title and message before posting.");
+      return;
+    }
+    setAnnouncements([{ id: uid("an"), title: title.trim(), body: body.trim(), date: new Date().toISOString().slice(0, 10) }, ...announcements]);
+    setTitle("");
+    setBody("");
+    setError("");
+  }
+  function remove(id) {
+    setAnnouncements(announcements.filter((a) => a.id !== id));
+  }
+
+  return (
+    <div>
+      <SectionHeader eyebrow="Manage" title="Announcements" />
+      <div style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 14, padding: 20, marginBottom: 22 }}>
+        <Field label="Title">
+          <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Registrations open for Hackathon" />
+        </Field>
+        <Field label="Message">
+          <textarea
+            style={{ ...inputStyle, minHeight: 64, resize: "vertical", fontFamily: "'Inter', sans-serif" }}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Details students need to know"
+          />
+        </Field>
+        {error && <p style={{ color: C.coral, fontSize: 13, margin: "0 0 10px" }}>{error}</p>}
+        <Button onClick={post}>Post announcement</Button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {announcements.map((a) => (
+          <div key={a.id} style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: "14px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div>
+                <h4 style={{ fontFamily: "'Fraunces', serif", fontSize: 15.5, fontWeight: 600, margin: "0 0 4px" }}>{a.title}</h4>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: C.inkSoft }}>{formatDate(a.date)}</span>
+              </div>
+              <Button small variant="danger" onClick={() => remove(a.id)}>Remove</Button>
+            </div>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, margin: "8px 0 0", lineHeight: 1.55 }}>{a.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Admin: Participant lists ---------- */
+
+function AdminParticipants({ events, registrations }) {
+  const [eventId, setEventId] = useState(events[0]?.id || "");
+  const list = registrations.filter((r) => r.eventId === eventId);
+  const ev = events.find((e) => e.id === eventId);
+
+  function copyList() {
+    const text = list.map((r, i) => `${i + 1}. ${r.studentName} — ${r.studentEmail}`).join("\n");
+    if (navigator.clipboard) navigator.clipboard.writeText(text || "No participants yet.");
+  }
+
+  return (
+    <div>
+      <SectionHeader
+        eyebrow="Generate"
+        title="Participant lists"
+        action={
+          <select style={{ ...inputStyle, width: 240 }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>{e.title}</option>
+            ))}
+          </select>
+        }
+      />
+      {ev && (
+        <div style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div>
+              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 17, fontWeight: 600, margin: 0 }}>{ev.title}</h3>
+              <span style={{ fontSize: 12.5, color: C.inkSoft, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {list.length} of {ev.capacity} spots filled
+              </span>
+            </div>
+            <Button small variant="ghost" onClick={copyList}>Copy list</Button>
+          </div>
+          {list.length === 0 ? (
+            <EmptyState text="No one has registered for this event yet." />
+          ) : (
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 2 }}>
+              {list.map((r) => (
+                <li key={r.id}>
+                  {r.studentName} <span style={{ color: C.inkSoft, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5 }}>— {r.studentEmail}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Student panel ---------- */
+
+function StudentPanel({ tab, session, events, categories, announcements, registrations, setRegistrations }) {
+  if (tab === "browse") return <StudentBrowse session={session} events={events} categories={categories} registrations={registrations} setRegistrations={setRegistrations} />;
+  if (tab === "schedule") return <StudentSchedule session={session} events={events} categories={categories} registrations={registrations} setRegistrations={setRegistrations} />;
+  if (tab === "announcements") return <StudentAnnouncements announcements={announcements} />;
+  return null;
+}
+
+function StudentBrowse({ session, events, categories, registrations, setRegistrations }) {
+  const [query, setQuery] = useState("");
+  const [cat, setCat] = useState("all");
+
+  const filtered = useMemo(() => {
+    return events
+      .filter((e) => (cat === "all" ? true : e.category === cat))
+      .filter((e) => e.title.toLowerCase().includes(query.toLowerCase()))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [events, cat, query]);
+
+  function isRegistered(eventId) {
+    return registrations.some((r) => r.eventId === eventId && r.studentEmail === session.email);
+  }
+  function spotsLeft(ev) {
+    return ev.capacity - registrations.filter((r) => r.eventId === ev.id).length;
+  }
+  function register(ev) {
+    if (isRegistered(ev.id) || spotsLeft(ev) <= 0) return;
+    setRegistrations([...registrations, { id: uid("reg"), eventId: ev.id, studentName: session.name, studentEmail: session.email }]);
+  }
+  function unregister(ev) {
+    setRegistrations(registrations.filter((r) => !(r.eventId === ev.id && r.studentEmail === session.email)));
+  }
+
+  return (
+    <div>
+      <SectionHeader eyebrow="Discover" title="Upcoming events" />
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <input
+          style={{ ...inputStyle, maxWidth: 260 }}
+          placeholder="Search events"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <select style={{ ...inputStyle, width: 180 }} value={cat} onChange={(e) => setCat(e.target.value)}>
+          <option value="all">All categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {filtered.length === 0 && <EmptyState text="No events match your search." />}
+        {filtered.map((ev) => {
+          const left = spotsLeft(ev);
+          const registered = isRegistered(ev.id);
+          return (
+            <TicketCard key={ev.id} ev={ev} categoryColor={catTone(ev.category, categories)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12.5, color: left <= 0 && !registered ? C.coral : C.inkSoft, fontFamily: "'IBM Plex Mono', monospace" }}>
+                  {left <= 0 ? "Full" : `${left} spot${left === 1 ? "" : "s"} left`}
+                </span>
+                <div style={{ flex: 1 }} />
+                {registered ? (
+                  <Button small variant="ghost" onClick={() => unregister(ev)}>Cancel registration</Button>
+                ) : (
+                  <Button small variant={left <= 0 ? "ghost" : "primary"} onClick={() => register(ev)} style={left <= 0 ? { opacity: 0.5, pointerEvents: "none" } : {}}>
+                    Register
+                  </Button>
+                )}
+              </div>
+            </TicketCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StudentSchedule({ session, events, categories, registrations, setRegistrations }) {
+  const mine = registrations
+    .filter((r) => r.studentEmail === session.email)
+    .map((r) => ({ reg: r, ev: events.find((e) => e.id === r.eventId) }))
+    .filter((x) => x.ev)
+    .sort((a, b) => new Date(a.ev.date) - new Date(b.ev.date));
+
+  function unregister(evId) {
+    setRegistrations(registrations.filter((r) => !(r.eventId === evId && r.studentEmail === session.email)));
+  }
+
+  return (
+    <div>
+      <SectionHeader eyebrow="Personal" title="My schedule" />
+      {mine.length === 0 ? (
+        <EmptyState text="You haven't registered for any events yet — head to Browse events." />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {mine.map(({ ev }) => (
+            <TicketCard key={ev.id} ev={ev} categoryColor={catTone(ev.category, categories)}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                <Button small variant="danger" onClick={() => unregister(ev.id)}>Cancel registration</Button>
+              </div>
+            </TicketCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentAnnouncements({ announcements }) {
+  return (
+    <div>
+      <SectionHeader eyebrow="Notices" title="Announcements" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {announcements.length === 0 && <EmptyState text="No announcements right now." />}
+        {announcements.map((a) => (
+          <div key={a.id} style={{ background: C.surface, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: "14px 18px" }}>
+            <h4 style={{ fontFamily: "'Fraunces', serif", fontSize: 15.5, fontWeight: 600, margin: "0 0 4px" }}>{a.title}</h4>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: C.inkSoft }}>{formatDate(a.date)}</span>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, margin: "8px 0 0", lineHeight: 1.55 }}>{a.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
